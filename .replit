@@ -18,3 +18,6 @@ expertMode = true
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[objectStorage]
+defaultBucketID = "replit-objstore-dde7ff1a-9e4c-4ad0-a704-07b05c564e46"
