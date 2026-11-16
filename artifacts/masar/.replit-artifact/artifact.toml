@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "مسار (Masar)"
+description = "An Arabic-first, offline-ready map for GPS tracking, terrain views, nearby discovery, and local location-based chat."
+version = "1.0.0"
+id = "artifacts/masar"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18100
+
+[services.development]
+run = "pnpm --filter @workspace/masar run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/masar", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/masar/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18100"
+BASE_PATH = "/"

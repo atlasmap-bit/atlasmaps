@@ -1,0 +1,14 @@
+{
+  "name": "مسار — رفيقك في الطريق",
+  "short_name": "مسار",
+  "description": "تتبع مباشر وخريطة واعية بالاتصال",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3f1e8",
+  "theme_color": "#f3f1e8",
+  "icons": [
+    { "src": "/masar-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

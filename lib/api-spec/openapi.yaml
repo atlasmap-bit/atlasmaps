@@ -1,0 +1,80 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: presence
+    description: Nearby people currently sharing their location
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /presence:
+    get:
+      operationId: getPresence
+      tags: [presence]
+      summary: List currently visible people
+      description: Returns people connected to Masar who are sharing their location.
+      responses:
+        "200":
+          description: Current visible people
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PresenceUser"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    PresenceUser:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        avatar:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        altitude:
+          type: ["number", "null"]
+        speed:
+          type: ["number", "null"]
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - avatar
+        - latitude
+        - longitude
+        - updatedAt
+
