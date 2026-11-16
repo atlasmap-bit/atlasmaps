@@ -29,6 +29,7 @@ export const GetPresenceResponseItem = zod.object({
   "longitude": zod.number(),
   "altitude": zod.number().nullish(),
   "speed": zod.number().nullish(),
+  "contactPhone": zod.string().nullable(),
   "updatedAt": zod.coerce.date()
 })
 export const GetPresenceResponse = zod.array(GetPresenceResponseItem)

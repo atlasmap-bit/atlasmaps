@@ -67,6 +67,8 @@ components:
           type: ["number", "null"]
         speed:
           type: ["number", "null"]
+        contactPhone:
+          type: ["string", "null"]
         updatedAt:
           type: string
           format: date-time
@@ -77,4 +79,5 @@ components:
         - latitude
         - longitude
         - updatedAt
+        - contactPhone
 

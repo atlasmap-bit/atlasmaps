@@ -19,6 +19,8 @@ export interface PresenceUser {
   altitude?: number | null;
   /** @nullable */
   speed?: number | null;
+  /** @nullable */
+  contactPhone: string | null;
   updatedAt: string;
 }
 

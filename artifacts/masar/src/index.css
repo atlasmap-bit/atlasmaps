@@ -99,6 +99,9 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(27, 120, 105
 .self-avatar { width:38px;height:38px;font-size:13px; }.self-copy { display:flex;flex-direction:column;gap:4px;flex:1;min-width:0; }
 .self-copy b,.person-info b { font-size:13px;font-weight:600; }.self-copy span { font-size:10px;color:#73817b;display:flex;align-items:center;gap:6px; }
 .tiny-dot { width:6px;height:6px;border-radius:50%;background:#aaa99b; }.tiny-dot.active { background:#328568;box-shadow:0 0 0 3px #32856824; }
+.self-phone { direction:ltr;unicode-bidi:isolate;font:9px var(--app-font-mono);color:#71867b!important; }
+.edit-profile-button { flex:none;width:29px;height:29px;border:1px solid #daddd2;border-radius:9px;background:#faf9f3;color:#62746c;display:grid;place-items:center; }
+.edit-profile-button:hover { color:#1c6559;background:#e7eee6; }
 .ghost-toggle { display:flex;align-items:center;gap:5px;border:1px solid #daddd2;border-radius:10px;padding:7px 8px;background:#faf9f3;color:#62746c;font-size:11px; }
 .ghost-toggle.selected { color:#93632f;background:#f8eddf;border-color:#edd8ba; }
 .people-scroll { flex:1;overflow:auto;min-height:80px;padding:11px 14px 4px; }
@@ -145,6 +148,20 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(27, 120, 105
 .start-button { width:100%;border:0;border-radius:12px;background:#1c6559;color:#fff;display:flex;align-items:center;justify-content:center;gap:9px;height:48px;font-size:13px;font-weight:600;transition:background .16s,transform .16s; }
 .start-button:hover:not(:disabled) { background:#155247;transform:translateY(-1px); }.start-button:disabled { opacity:.45;cursor:not-allowed; }
 .onboard-foot { display:flex;align-items:center;justify-content:center;gap:6px;margin-top:14px;color:#9aa49b;font-size:9px; }
+.phone-field-label { margin-top:14px; }.phone-field-label span { color:#91a097;font-weight:400; }
+.phone-hint { margin-top:5px;color:#849189;font-size:9px; }
+.phone-error { margin-top:5px;color:#a3493e;font-size:10px; }
+.contact-visibility { width:100%;display:flex;align-items:center;gap:8px;margin-top:10px;padding:9px 10px;border:1px solid #e1e5da;border-radius:10px;background:#f4f5ee;color:#5e766a;text-align:right;font-size:10px; }
+.contact-visibility i { margin-right:auto;font-style:normal;color:#557763;font-weight:600; }
+.contact-visibility[aria-pressed="true"] { border-color:#c8dfce;background:#eaf2e8;color:#347151; }
+.contact-visibility:disabled { opacity:.58;cursor:not-allowed; }
+.profile-modal-backdrop { overflow:auto; }
+.profile-editor { position:relative; }
+.profile-modal-close { position:absolute;top:15px;left:15px;width:33px;height:33px;border:0;border-radius:10px;background:#f0f1e9;color:#687b71;display:grid;place-items:center; }
+.profile-modal-close:hover { background:#e5ebe1; }
+.profile-editor-actions { display:flex;align-items:center;gap:8px;margin-top:16px; }
+.profile-editor-actions>button:first-child { border:1px solid #dfe3d8;border-radius:11px;background:#f7f7f1;color:#62766b;height:46px;padding:0 15px;font-size:12px; }
+.profile-editor-actions .start-button { flex:1; }
 .permission-error { color:#a3493e;background:#f8e8e2;border-radius:9px;padding:9px 10px;font-size:10px;line-height:1.6;margin-bottom:10px; }
 .permission-toast { position:absolute;z-index:7;right:385px;bottom:20px;background:#f8e9e2;color:#8d4038;border:1px solid #eed0c5;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px;font-size:11px;max-width:min(450px,calc(100vw - 30px)); }
 .permission-toast button { border:0;background:transparent;color:#874940;font-size:10px;white-space:nowrap; }
@@ -157,9 +174,22 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(27, 120, 105
 .chat-empty b { color:#456158;font-size:13px;margin-top:3px; }.message-row { display:flex;justify-content:flex-start; }.message-row.mine { justify-content:flex-end; }
 .message-bubble { max-width:84%;padding:9px 11px 6px;background:#efeee5;border-radius:13px 13px 4px 13px;color:#34544b;font-size:12px;line-height:1.7; }
 .message-row.mine .message-bubble { background:#dcebe1;border-radius:13px 13px 13px 4px; }.message-bubble time { display:block;text-align:left;color:#92a097;font-size:9px;margin-top:2px; }
-.share-coordinates-button { display:flex;align-items:center;justify-content:center;gap:5px;flex:none;border:1px solid #dce3d9;background:#eef2e9;color:#3c685d;border-radius:9px;padding:6px 8px;font-size:9px;line-height:1.4; }
+.chat-toolbar { display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid #ecebe2;overflow-x:auto;scrollbar-width:none; }
+.chat-toolbar::-webkit-scrollbar { display:none; }
+.share-coordinates-button,.share-contact-button,.contact-action { display:flex;align-items:center;justify-content:center;gap:5px;flex:none;border:1px solid #dce3d9;background:#eef2e9;color:#3c685d;border-radius:9px;padding:7px 8px;font-size:9px;line-height:1.4;text-decoration:none;white-space:nowrap; }
 .share-coordinates-button:hover { background:#e1ebe1; }
+.share-contact-button { background:#f4efe3;border-color:#e8deca;color:#89663a; }
+.share-contact-button:hover { background:#eee6d5; }
+.contact-action { background:#e8f1e8;border-color:#d6e6d8;color:#2d6e4e; }
+.contact-action:hover { background:#dcebdd; }
+.whatsapp-action { background:#e3f1e8;color:#24764b;border-color:#d2e8d8; }
 .coord-chip { margin-top:5px;background:#f9f8f0;padding:5px 7px;border-radius:7px;color:#397464;font:10px var(--app-font-mono);direction:ltr; }
+.contact-chip { display:flex;flex-direction:column;gap:7px;margin-top:8px;padding:9px;border-radius:10px;background:#f8f9f3;border:1px solid #e3e9de;color:#3c5d50; }
+.contact-chip>span { display:flex;align-items:center;gap:5px;font-size:10px;color:#728277; }
+.contact-chip>bdi { font:500 12px var(--app-font-mono);color:#254d43; }
+.contact-chip>div { display:flex;gap:6px; }
+.contact-chip a { display:flex;align-items:center;justify-content:center;gap:5px;flex:1;text-decoration:none;border-radius:7px;background:#e7f0e7;color:#2c704e;padding:6px;font-size:10px; }
+.contact-chip a:hover { background:#dcebdd; }
 .composer { margin:10px 12px 13px;padding:5px;display:flex;gap:6px;border:1px solid #e0e2d8;border-radius:13px;background:#faf9f3; }
 .composer input { border:0;outline:none!important;box-shadow:none!important;min-width:0;flex:1;background:transparent;padding:0 7px;color:#294b43;font-size:12px; }.composer input::placeholder { color:#a3ada4; }
 .send-button { width:36px;height:36px;border:0;border-radius:10px;background:#1d685a;color:#fff;display:grid;place-items:center; }.send-button:disabled { opacity:.4;cursor:not-allowed; }

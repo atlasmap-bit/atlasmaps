@@ -14,7 +14,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import {
   Activity, ArrowDownLeft, Check, ChevronDown, CircleHelp, Compass, Copy, Crosshair, LocateFixed,
   MapPin, MessageCircle, Navigation, Radio, Send, Smartphone, Users, Wifi, WifiOff, X, Mountain,
-  Satellite, Map as MapIcon, Eye, EyeOff, Trash2, RefreshCw, Sun, Star
+  Satellite, Map as MapIcon, Eye, EyeOff, Trash2, RefreshCw, Sun, Star, Pencil, Phone, PhoneCall, ContactRound
 } from 'lucide-react';
 
 const queryClient = new QueryClient();
@@ -26,9 +26,9 @@ const AVATAR_OPTIONS = [
   { id: 'sun', label: 'شمس' },
   { id: 'star', label: 'نجمة' },
 ];
-type Profile = { id: string; name: string; avatar: string; color: string };
+type Profile = { id: string; name: string; avatar: string; color: string; contactPhone: string | null; shareContact: boolean };
 type Pin = { id: string; label: string; latitude: number; longitude: number; createdAt: string };
-type ChatMessage = { id: string; fromId: string; toId: string; text: string; createdAt: string; exactCoordinates?: { latitude: number; longitude: number } };
+type ChatMessage = { id: string; fromId: string; toId: string; text: string; createdAt: string; exactCoordinates?: { latitude: number; longitude: number }; contactPhone?: string };
 type GeoPoint = { latitude: number; longitude: number; altitude?: number | null; speed?: number | null };
 type MapHandle = { map: any; library: any };
 
@@ -72,6 +72,15 @@ function distanceKm(a: Pick<GeoPoint, 'latitude' | 'longitude'>, b: Pick<GeoPoin
 }
 function arabicDistance(km: number) { return km < 1 ? `${Math.round(km * 1000)} م` : `${km.toFixed(1)} كم`; }
 function initials(name: string) { return name.trim().split(/\s+/).slice(0, 2).map(x => x[0]).join('') || 'م'; }
+function normalizePhone(value: string) {
+  const asciiDigits = value
+    .replace(/[٠-٩]/g, digit => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
+    .replace(/[۰-۹]/g, digit => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)));
+  const compact = asciiDigits.replace(/[^\d+]/g, '');
+  return compact.startsWith('+') ? `+${compact.slice(1).replace(/\+/g, '')}` : compact.replace(/\+/g, '');
+}
+function isValidPhone(value: string) { return /^\+?\d{7,15}$/.test(normalizePhone(value)); }
+function whatsappPhone(value: string) { return normalizePhone(value).replace(/\D/g, ''); }
 function AvatarIcon({ name, size = 17 }: { name: string; size?: number }) {
   if (name === 'mountain') return <Mountain size={size} />;
   if (name === 'sun') return <Sun size={size} />;
@@ -91,6 +100,9 @@ function Home() {
   const simulationTimer = useRef<number | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileName, setProfileName] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
+  const [shareContact, setShareContact] = useState(false);
+  const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const [profileColor, setProfileColor] = useState<string>(AVATAR_COLORS[0]);
   const [profileAvatar, setProfileAvatar] = useState('compass');
   const [profileLoaded, setProfileLoaded] = useState(false);
@@ -122,7 +134,11 @@ function Home() {
     let alive = true;
     Promise.all([readLocal<Profile>('profile'), readLocal<Pin[]>('pins'), readLocal<ChatMessage[]>('messages')]).then(([p, savedPins, savedMessages]) => {
       if (!alive) return;
-      if (p) { setProfile(p); setProfileName(p.name); setProfileColor(p.color); setProfileAvatar(p.avatar); }
+      if (p) {
+        const restored: Profile = { ...p, contactPhone: p.contactPhone ?? null, shareContact: p.shareContact ?? false };
+        setProfile(restored); setProfileName(restored.name); setProfilePhone(restored.contactPhone ?? '');
+        setShareContact(restored.shareContact); setProfileColor(restored.color); setProfileAvatar(restored.avatar);
+      }
       setPins(savedPins ?? []); setMessages(savedMessages ?? []); setProfileLoaded(true);
     });
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/service-worker.js').catch(() => undefined);
@@ -221,7 +237,13 @@ function Home() {
         if (gone) return;
         const socket = io({ path: '/socket.io', transports: ['websocket', 'polling'], reconnection: true, reconnectionAttempts: Infinity });
         socketRef.current = socket;
-        socket.on('connect', () => { setConnected(true); socket.emit('masar:join', { id: profile.id, name: profile.name, avatar: profile.avatar, ghost }); });
+        socket.on('connect', () => {
+          setConnected(true);
+          socket.emit('masar:join', {
+            id: profile.id, name: profile.name, avatar: profile.avatar, ghost,
+            contactPhone: profile.contactPhone, shareContact: profile.shareContact,
+          });
+        });
         socket.on('disconnect', () => setConnected(false));
         socket.on('connect_error', () => setConnected(false));
         socket.on('masar:message', (incoming: ChatMessage) => setMessages(prev => prev.some(m => m.id === incoming.id) ? prev : [...prev, incoming]));
@@ -237,6 +259,14 @@ function Home() {
     if (connected && profile && socketRef.current) socketRef.current.emit('masar:ghost', { ghost });
   }, [ghost, connected, profile]);
   useEffect(() => {
+    if (connected && profile && socketRef.current) {
+      socketRef.current.emit('masar:contact', {
+        contactPhone: profile.contactPhone,
+        shareContact: profile.shareContact,
+      });
+    }
+  }, [connected, profile?.contactPhone, profile?.shareContact]);
+  useEffect(() => {
     if (tracking && location && connected && !ghost && socketRef.current) {
       socketRef.current.emit('masar:location', { ...location, updatedAt: new Date().toISOString() });
     }
@@ -250,12 +280,42 @@ function Home() {
     setSelected(person); setMobilePeopleOpen(false);
     mapRef.current?.map.flyTo({ center: [person.longitude, person.latitude], zoom: 15.5, duration: 950 });
   };
+  useEffect(() => {
+    if (!selected) return;
+    const current = people.find(person => person.id === selected.id);
+    if (!current) { setSelected(null); return; }
+    if (current.contactPhone !== selected.contactPhone) setSelected(current);
+  }, [people, selected?.id, selected?.contactPhone]);
   const saveProfile = () => {
     const name = profileName.trim();
     if (!name) return;
-    const created = { id: crypto.randomUUID(), name, avatar: profileAvatar, color: profileColor };
+    if (profilePhone.trim() && !isValidPhone(profilePhone)) { say('أدخل رقمًا صحيحًا مع رمز الدولة، أو اتركه فارغًا'); return; }
+    const created: Profile = {
+      id: crypto.randomUUID(), name, avatar: profileAvatar, color: profileColor,
+      contactPhone: profilePhone.trim() ? normalizePhone(profilePhone) : null,
+      shareContact: Boolean(profilePhone.trim()) && shareContact,
+    };
     setProfile(created);
     startTracking();
+  };
+  const saveProfileChanges = () => {
+    if (!profile) return;
+    if (profilePhone.trim() && !isValidPhone(profilePhone)) { say('أدخل رقمًا صحيحًا مع رمز الدولة، أو اتركه فارغًا'); return; }
+    setProfile({
+      ...profile,
+      contactPhone: profilePhone.trim() ? normalizePhone(profilePhone) : null,
+      shareContact: Boolean(profilePhone.trim()) && shareContact,
+    });
+    setProfileEditorOpen(false);
+    say('تم تحديث بيانات التواصل');
+  };
+  const closeProfileEditor = () => {
+    if (profile) {
+      setProfileName(profile.name);
+      setProfilePhone(profile.contactPhone ?? '');
+      setShareContact(profile.shareContact);
+    }
+    setProfileEditorOpen(false);
   };
   const startTracking = () => {
     setPermissionError('');
@@ -323,6 +383,29 @@ function Home() {
     });
     setMessages(prev => [...prev, msg]); say('جارٍ مشاركة موقعك');
   };
+  const shareContactToChat = () => {
+    if (!selected || !profile) return;
+    if (!profile.contactPhone) {
+      setProfilePhone('');
+      setShareContact(false);
+      setProfileEditorOpen(true);
+      say('أضف رقمك أولاً لمشاركته في المحادثة');
+      return;
+    }
+    if (!online || !connected || !socketRef.current) { say('لا يمكن مشاركة رقم التواصل دون اتصال'); return; }
+    const message: ChatMessage = {
+      id: crypto.randomUUID(), fromId: profile.id, toId: selected.id,
+      text: 'مشاركة رقم التواصل', contactPhone: profile.contactPhone,
+      createdAt: new Date().toISOString(),
+    };
+    socketRef.current.emit('masar:message', message, (result: { ok: boolean; error?: string }) => {
+      if (result?.ok) return;
+      setMessages(prev => prev.filter(item => item.id !== message.id));
+      say(result?.error || 'تعذرت مشاركة رقم التواصل');
+    });
+    setMessages(prev => [...prev, message]);
+    say(`تمت مشاركة رقمك مع ${selected.name}`);
+  };
   const removePin = (id: string) => setPins(prev => prev.filter(pin => pin.id !== id));
   const showLayer = (value: 'standard' | 'satellite' | 'terrain') => { setLayer(value); };
 
@@ -345,14 +428,24 @@ function Home() {
               <button className="plain-icon" onClick={() => setSelected(null)} aria-label="العودة إلى الأشخاص"><ArrowDownLeft size={19} /></button>
               <div className="avatar chat-avatar" style={{ background: AVATAR_COLORS[selected.name.length % AVATAR_COLORS.length] }}><AvatarIcon name={selected.avatar} size={16} /></div>
               <div className="chat-person"><b>{selected.name}</b><span>{location ? `على بُعد ${arabicDistance(distanceKm(location, selected))}` : 'فعّل التتبع لحساب المسافة'}</span></div>
-              <button className="share-coordinates-button" onClick={shareToChat} aria-label="مشاركة إحداثياتي الدقيقة" title="مشاركة إحداثياتي الدقيقة"><Crosshair size={16} /><span>مشاركة إحداثياتي الدقيقة</span></button>
               <button className="plain-icon" onClick={() => setSelected(null)} aria-label="إغلاق المحادثة"><X size={19} /></button>
+            </div>
+            <div className="chat-toolbar">
+              <button className="share-coordinates-button" onClick={shareToChat} aria-label="مشاركة إحداثياتي الدقيقة" title="مشاركة إحداثياتي الدقيقة"><Crosshair size={16} /><span>مشاركة إحداثياتي</span></button>
+              <button className="share-contact-button" onClick={shareContactToChat} title="إرسال رقمك في هذه المحادثة"><ContactRound size={15} /><span>مشاركة رقمي</span></button>
+              {selected.contactPhone && <>
+                <a className="contact-action" href={`tel:${normalizePhone(selected.contactPhone)}`}><PhoneCall size={15} /><span>اتصال</span></a>
+                <a className="contact-action whatsapp-action" href={`https://wa.me/${whatsappPhone(selected.contactPhone)}`} target="_blank" rel="noreferrer"><MessageCircle size={15} /><span>واتساب</span></a>
+              </>}
             </div>
             {!online && <div className="offline-note"><WifiOff size={15} /> لا يمكن إرسال الرسائل دون اتصال. ستبقى المحادثات المحفوظة متاحة.</div>}
             <div className="message-list scroll-slim">
               {selectedMessages.length === 0 ? <div className="chat-empty"><MessageCircle size={28} /><b>لا توجد رسائل بعد</b><span>ابدأ محادثة قصيرة مع {selected.name}</span></div> : selectedMessages.map(message => {
                 const mine = message.fromId === profile?.id;
-                return <div key={message.id} className={`message-row ${mine ? 'mine' : ''}`}><div className="message-bubble">{message.text}{message.exactCoordinates && <div className="coord-chip"><MapPin size={13} /> {message.exactCoordinates.latitude.toFixed(5)}, {message.exactCoordinates.longitude.toFixed(5)}</div>}<time>{new Intl.DateTimeFormat('ar', { hour: '2-digit', minute: '2-digit' }).format(new Date(message.createdAt))}</time></div></div>;
+                return <div key={message.id} className={`message-row ${mine ? 'mine' : ''}`}><div className="message-bubble">{message.text}
+                  {message.exactCoordinates && <div className="coord-chip"><MapPin size={13} /> {message.exactCoordinates.latitude.toFixed(5)}, {message.exactCoordinates.longitude.toFixed(5)}</div>}
+                  {message.contactPhone && <div className="contact-chip"><span><Phone size={14} /> رقم التواصل</span><bdi dir="ltr">{message.contactPhone}</bdi><div><a href={`tel:${normalizePhone(message.contactPhone)}`} aria-label="اتصال بالرقم"><PhoneCall size={14} /> اتصال</a><a href={`https://wa.me/${whatsappPhone(message.contactPhone)}`} target="_blank" rel="noreferrer" aria-label="فتح محادثة واتساب"><MessageCircle size={14} /> واتساب</a></div></div>}
+                  <time>{new Intl.DateTimeFormat('ar', { hour: '2-digit', minute: '2-digit' }).format(new Date(message.createdAt))}</time></div></div>;
               })}
             </div>
             <form className="composer" onSubmit={sendMessage}>
@@ -368,7 +461,8 @@ function Home() {
             </div>
             <div className="self-card">
               <div className="avatar self-avatar" style={{ background: profile?.color ?? '#d5e7dd' }}><AvatarIcon name={profile?.avatar ?? 'compass'} size={18} /></div>
-              <div className="self-copy"><b>{profile?.name || 'أنت'}</b><span><i className={tracking ? 'tiny-dot active' : 'tiny-dot'} />{tracking ? ghost ? 'تتبع مخفي' : 'تشارك موقعك' : 'التتبع متوقف'}</span></div>
+              <div className="self-copy"><b>{profile?.name || 'أنت'}</b><span><i className={tracking ? 'tiny-dot active' : 'tiny-dot'} />{tracking ? ghost ? 'تتبع مخفي' : 'تشارك موقعك' : 'التتبع متوقف'}</span>{profile?.contactPhone && <span className="self-phone" dir="ltr">{profile.contactPhone}{profile.shareContact ? ' · ظاهر للقريبين' : ' · خاص'}</span>}</div>
+              <button className="edit-profile-button" onClick={() => setProfileEditorOpen(true)} aria-label="تعديل بيانات التواصل" title="تعديل بيانات التواصل"><Pencil size={15} /></button>
               <button className={`ghost-toggle ${ghost ? 'selected' : ''}`} onClick={() => setGhost(v => !v)} aria-pressed={ghost} aria-label={ghost ? 'إيقاف وضع التخفي' : 'تفعيل وضع التخفي'} title="وضع التخفي">{ghost ? <EyeOff size={17} /> : <Eye size={17} />}<span>وضع التخفي</span></button>
             </div>
             <div className="people-scroll scroll-slim">
@@ -427,12 +521,41 @@ function Home() {
           <p>اختر اسماً يظهر للأشخاص القريبين منك، ثم ابدأ مشاركة موقعك.</p>
           <label className="field-label" htmlFor="profile-name">الاسم الظاهر</label>
           <input id="profile-name" className="name-input" value={profileName} onChange={e => setProfileName(e.target.value)} placeholder="مثال: نورة" maxLength={28} autoComplete="name" data-testid="input-profile-name" />
+          <label className="field-label phone-field-label" htmlFor="profile-phone">رقم التواصل <span>(اختياري)</span></label>
+          <input id="profile-phone" className="name-input" type="tel" inputMode="tel" value={profilePhone} onChange={e => { setProfilePhone(e.target.value); if (!e.target.value.trim()) setShareContact(false); }} placeholder="+968 9XXX XXXX" autoComplete="tel" dir="ltr" />
+          <div className="phone-hint">أضف رمز الدولة لاستخدام واتساب ومشاركة الرقم.</div>
+          {profilePhone.trim() && !isValidPhone(profilePhone) && <div className="phone-error" role="alert">تحقق من الرقم ورمز الدولة.</div>}
+          <button type="button" className="contact-visibility" onClick={() => setShareContact(value => !value)} disabled={!profilePhone.trim()} aria-pressed={shareContact && Boolean(profilePhone.trim())}>
+            {shareContact && profilePhone.trim() ? <Eye size={15} /> : <EyeOff size={15} />}
+            <span>إظهار رقمي للمستخدمين القريبين</span>
+            <i>{shareContact && profilePhone.trim() ? 'مفعّل' : 'خاص'}</i>
+          </button>
           <div className="field-label avatar-label">اختر أيقونتك</div>
           <div className="avatar-palette">{AVATAR_OPTIONS.map((option, index) => <button key={option.id} aria-label={`اختيار أيقونة ${option.label}`} aria-pressed={profileAvatar === option.id} className={profileAvatar === option.id ? 'color-choice chosen' : 'color-choice'} style={{ background: AVATAR_COLORS[index] }} onClick={() => { setProfileAvatar(option.id); setProfileColor(AVATAR_COLORS[index]); }}><AvatarIcon name={option.id} size={16} />{profileAvatar === option.id && <i><Check size={12} /></i>}</button>)}</div>
-          <div className="privacy-copy"><Eye size={15} /><span>موقعك لا يظهر إلا عند التتبع المباشر. يمكنك إخفاؤه بوضع الشبح.</span></div>
+          <div className="privacy-copy"><Eye size={15} /><span>رقمك خاص افتراضياً. عند تفعيل المشاركة يظهر للقريبين الذين يشاركون مواقعهم.</span></div>
           {permissionError && <div className="permission-error" role="alert">{permissionError}</div>}
-          <button className="start-button" disabled={!profileName.trim()} onClick={saveProfile} data-testid="button-start-tracking"><LocateFixed size={18} />ابدأ التتبع المباشر</button>
+          <button className="start-button" disabled={!profileName.trim() || Boolean(profilePhone.trim() && !isValidPhone(profilePhone))} onClick={saveProfile} data-testid="button-start-tracking"><LocateFixed size={18} />ابدأ التتبع المباشر</button>
           <div className="onboard-foot"><Wifi size={13} /> يعمل <bdi>Atlas</bdi> مع اتصال متقطع ويحفظ بياناتك محلياً</div>
+        </section>
+      </div>}
+      {profile && profileEditorOpen && <div className="onboarding-backdrop profile-modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) closeProfileEditor(); }}>
+        <section className="onboarding-card profile-editor panel enter" role="dialog" aria-modal="true" aria-labelledby="profile-editor-title">
+          <button className="profile-modal-close" onClick={closeProfileEditor} aria-label="إغلاق"><X size={18} /></button>
+          <div className="onboard-mark"><ContactRound size={22} /></div>
+          <div className="eyebrow">بياناتك في Atlas</div>
+          <h2 id="profile-editor-title">بيانات التواصل</h2>
+          <p>أضف رقمك لتسهيل التواصل. لن يظهر للآخرين إلا إذا فعّلت المشاركة.</p>
+          <label className="field-label phone-field-label" htmlFor="edit-profile-phone">رقم الهاتف</label>
+          <input id="edit-profile-phone" className="name-input" type="tel" inputMode="tel" value={profilePhone} onChange={e => { setProfilePhone(e.target.value); if (!e.target.value.trim()) setShareContact(false); }} placeholder="+968 9XXX XXXX" autoComplete="tel" dir="ltr" />
+          <div className="phone-hint">اكتب الرقم مع رمز الدولة لفتح واتساب بشكل صحيح.</div>
+          {profilePhone.trim() && !isValidPhone(profilePhone) && <div className="phone-error" role="alert">تحقق من الرقم ورمز الدولة.</div>}
+          <button type="button" className="contact-visibility" onClick={() => setShareContact(value => !value)} disabled={!profilePhone.trim()} aria-pressed={shareContact && Boolean(profilePhone.trim())}>
+            {shareContact && profilePhone.trim() ? <Eye size={15} /> : <EyeOff size={15} />}
+            <span>إظهار رقمي للمستخدمين القريبين</span>
+            <i>{shareContact && profilePhone.trim() ? 'مفعّل' : 'خاص'}</i>
+          </button>
+          <div className="privacy-copy"><Eye size={15} /><span>يمكنك مشاركة رقمك مباشرة مع شخص من داخل محادثته، حتى لو كان رقمك خاصاً.</span></div>
+          <div className="profile-editor-actions"><button onClick={closeProfileEditor}>إلغاء</button><button className="start-button" disabled={Boolean(profilePhone.trim() && !isValidPhone(profilePhone))} onClick={saveProfileChanges}><Check size={17} />حفظ التغييرات</button></div>
         </section>
       </div>}
       {permissionError && profile && !tracking && <div className="permission-toast" role="alert">{permissionError}<button onClick={startTracking}>حاول مجدداً</button><button onClick={() => setPermissionError('')} aria-label="إغلاق"><X size={15} /></button></div>}

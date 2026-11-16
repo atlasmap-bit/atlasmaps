@@ -12,6 +12,8 @@ const joinSchema = z.object({
   id: z.string().uuid(),
   name: z.string().trim().min(1).max(48),
   avatar: z.string().trim().min(1).max(20),
+  contactPhone: z.string().trim().max(24).nullable().optional(),
+  shareContact: z.boolean().optional(),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
   altitude: z.number().nullable().optional(),
@@ -35,9 +37,14 @@ const messageSchema = z.object({
       longitude: z.number().min(-180).max(180),
     })
     .optional(),
+  contactPhone: z.string().trim().min(1).max(24).optional(),
 });
 
 const ghostSchema = z.object({ ghost: z.boolean() });
+const contactSchema = z.object({
+  contactPhone: z.string().trim().max(24).nullable(),
+  shareContact: z.boolean(),
+});
 
 function publishPresence(io: Server): void {
   io.emit("masar:presence", getVisiblePresence());
@@ -72,6 +79,8 @@ export function attachRealtimeHandlers(io: Server): void {
         longitude: profile.longitude ?? previous?.longitude ?? null,
         altitude: profile.altitude ?? previous?.altitude ?? null,
         speed: profile.speed ?? previous?.speed ?? null,
+        contactPhone: profile.contactPhone ?? null,
+        shareContact: profile.shareContact ?? false,
         updatedAt: new Date(),
         ghost: previous?.ghost ?? false,
         socketId: socket.id,
@@ -101,6 +110,14 @@ export function attachRealtimeHandlers(io: Server): void {
       publishPresence(io);
     });
 
+    socket.on("masar:contact", (input: unknown) => {
+      const userId = socket.data.userId as string | undefined;
+      const parsed = contactSchema.safeParse(input);
+      if (!userId || !parsed.success) return;
+      updateLiveUser(userId, socket.id, parsed.data);
+      publishPresence(io);
+    });
+
     socket.on(
       "masar:message",
       (
@@ -127,6 +144,7 @@ export function attachRealtimeHandlers(io: Server): void {
         text: parsed.data.text,
         createdAt: new Date().toISOString(),
         exactCoordinates: parsed.data.exactCoordinates,
+        contactPhone: parsed.data.contactPhone,
       };
 
       socket.emit("masar:message", message);

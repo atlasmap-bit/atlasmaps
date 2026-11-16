@@ -6,6 +6,8 @@ export type PresenceUser = Infer<typeof GetPresenceResponseItem>;
 export type LiveUser = Omit<PresenceUser, "latitude" | "longitude"> & {
   latitude: number | null;
   longitude: number | null;
+  contactPhone: string | null;
+  shareContact: boolean;
   ghost: boolean;
   socketId: string;
 };
@@ -20,8 +22,11 @@ export function getVisiblePresence(): PresenceUser[] {
         typeof user.latitude === "number" &&
         typeof user.longitude === "number",
     )
-    .map(({ ghost: _ghost, socketId: _socketId, ...user }) =>
-      GetPresenceResponseItem.parse(user),
+    .map(({ ghost: _ghost, socketId: _socketId, shareContact, contactPhone, ...user }) =>
+      GetPresenceResponseItem.parse({
+        ...user,
+        contactPhone: shareContact ? contactPhone : null,
+      }),
     );
 }
 
