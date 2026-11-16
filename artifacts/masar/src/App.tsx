@@ -331,7 +331,7 @@ function Home() {
       <div className="map-shell"><div ref={mapElement} className="map-map" aria-label="الخريطة" /></div>
       <header className="topbar panel">
         <div className="brand-mark"><Navigation size={21} strokeWidth={2.4} /></div>
-        <div className="brand-copy"><strong>مسار</strong><span>رفيقك في الطريق</span></div>
+        <div className="brand-copy"><strong dir="ltr">Atlas</strong><span>رفيقك في الطريق</span></div>
         <div className={`net-badge ${online && connected ? 'is-online' : ''}`} data-testid="status-connection">
           <span className="live-dot" />{connected ? 'متصل' : online ? 'بانتظار الاتصال' : 'وضع عدم الاتصال — الخرائط المحفوظة'}
         </div>
@@ -422,7 +422,7 @@ function Home() {
       {!profile && profileLoaded && <div className="onboarding-backdrop">
         <section className="onboarding-card panel enter" aria-labelledby="welcome-title">
           <div className="onboard-mark"><Navigation size={23} /></div>
-          <div className="eyebrow">مسار · رفيق الطريق</div>
+          <div className="eyebrow"><bdi>Atlas</bdi> · رفيق الطريق</div>
           <h2 id="welcome-title">خلّنا نعرفك</h2>
           <p>اختر اسماً يظهر للأشخاص القريبين منك، ثم ابدأ مشاركة موقعك.</p>
           <label className="field-label" htmlFor="profile-name">الاسم الظاهر</label>
@@ -432,7 +432,7 @@ function Home() {
           <div className="privacy-copy"><Eye size={15} /><span>موقعك لا يظهر إلا عند التتبع المباشر. يمكنك إخفاؤه بوضع الشبح.</span></div>
           {permissionError && <div className="permission-error" role="alert">{permissionError}</div>}
           <button className="start-button" disabled={!profileName.trim()} onClick={saveProfile} data-testid="button-start-tracking"><LocateFixed size={18} />ابدأ التتبع المباشر</button>
-          <div className="onboard-foot"><Wifi size={13} /> يعمل مسار مع اتصال متقطع ويحفظ بياناتك محلياً</div>
+          <div className="onboard-foot"><Wifi size={13} /> يعمل <bdi>Atlas</bdi> مع اتصال متقطع ويحفظ بياناتك محلياً</div>
         </section>
       </div>}
       {permissionError && profile && !tracking && <div className="permission-toast" role="alert">{permissionError}<button onClick={startTracking}>حاول مجدداً</button><button onClick={() => setPermissionError('')} aria-label="إغلاق"><X size={15} /></button></div>}

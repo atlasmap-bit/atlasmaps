@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "مسار (Masar)"
+title = "Atlas"
 description = "An Arabic-first, offline-ready map for GPS tracking, terrain views, nearby discovery, and local location-based chat."
 version = "1.0.0"
 id = "artifacts/masar"
